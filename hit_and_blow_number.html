@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ヒットアンドブロー自動返答機</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+    }
+    .wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    h1 {
+      font-size: 32px;
+      margin: 0 0 20px;
+    }
+    .card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+    }
+    .section + .section {
+      margin-top: 18px;
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      font-size: 16px;
+    }
+    input:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+    .buttons {
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 12px 18px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .primary {
+      background: #2563eb;
+      color: white;
+    }
+    .secondary {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+    .info {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-size: 14px;
+    }
+    .message {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #b91c1c;
+    }
+    .result {
+      margin-top: 16px;
+      padding: 18px;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      background: #f8fafc;
+      text-align: center;
+      font-size: 28px;
+      font-weight: bold;
+    }
+    @media (max-width: 600px) {
+      h1 {
+        font-size: 26px;
+      }
+      .result {
+        font-size: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>ヒットアンドブロー</h1>
+    <div class="card">
+      <div class="section">
+        <div class="buttons">
+          <button id="set-answer-btn" class="secondary">答えを設定する</button>
+        </div>
+        <div id="status" class="info">まだ答えが設定されていません。</div>
+      </div>
+
+      <div class="section">
+        <label for="guess">数字を入力</label>
+        <input id="guess" type="text" inputmode="numeric" autocomplete="off" />
+        <div class="buttons">
+          <button id="judge-btn" class="primary">判定</button>
+        </div>
+      </div>
+
+      <div id="message"></div>
+      <div id="result"></div>
+    </div>
+  </div>
+
+  <script>
+    let answer = '';
+    let clearTimer = null;
+
+    const setBtn = document.getElementById('set-answer-btn');
+    const judgeBtn = document.getElementById('judge-btn');
+    const guessInput = document.getElementById('guess');
+    const result = document.getElementById('result');
+    const status = document.getElementById('status');
+    const message = document.getElementById('message');
+
+    const SECRET = '1234'; // ← ここを好きな暗証番号に変えてください
+
+    function normalize(v) {
+      return v.replace(/\D/g, '');
+    }
+
+    function hasDup(v) {
+      return new Set(v).size !== v.length;
+    }
+
+    function showMessage(text) {
+      message.innerHTML = text ? `<div class="message">${text}</div>` : '';
+    }
+
+    function showResult(text) {
+      if (clearTimer) {
+        clearTimeout(clearTimer);
+        clearTimer = null;
+      }
+
+      if (!text) {
+        result.innerHTML = '';
+        return;
+      }
+
+      result.innerHTML = `<div class="result">${text}</div>`;
+
+      clearTimer = setTimeout(() => {
+        result.innerHTML = '';
+        clearTimer = null;
+      }, 1000);
+    }
+
+    setBtn.addEventListener('click', () => {
+      const password = window.prompt('暗証番号を入力してください');
+      if (password === null) return;
+
+      if (password !== SECRET) {
+        showMessage('暗証番号が違います');
+        showResult('');
+        return;
+      }
+
+      const input = window.prompt('答えを入力（数字・重複なし）', answer);
+      if (input === null) return;
+
+      const v = normalize(input);
+
+      if (v.length === 0 || hasDup(v)) {
+        showMessage('不正な入力です（数字のみ・重複なし）');
+        showResult('');
+        return;
+      }
+
+      answer = v;
+      status.textContent = `答えを設定済み（${v.length}桁）`;
+      showMessage('');
+      showResult('');
+      guessInput.value = '';
+      guessInput.focus();
+    });
+
+    judgeBtn.addEventListener('click', () => {
+      if (!answer) {
+        showMessage('先に答えを設定してください');
+        showResult('');
+        return;
+      }
+
+      const guess = normalize(guessInput.value);
+      guessInput.value = guess;
+
+      if (guess.length !== answer.length) {
+        showMessage(answer.length + '桁で入力してください');
+        showResult('');
+        return;
+      }
+
+      if (hasDup(guess)) {
+        showMessage('同じ数字は使えません');
+        showResult('');
+        return;
+      }
+
+      let h = 0;
+      let b = 0;
+      for (let i = 0; i < guess.length; i++) {
+        if (guess[i] === answer[i]) {
+          h++;
+        } else if (answer.includes(guess[i])) {
+          b++;
+        }
+      }
+
+      showMessage('');
+      showResult(`${guess}：${h}H${b}B`);
+      guessInput.value = '';
+      guessInput.focus();
+    });
+
+    guessInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        judgeBtn.click();
+      }
+    });
+  </script>
+</body>
+</html>
